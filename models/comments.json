@@ -1,0 +1,65 @@
+{
+    "comments": [
+      {
+        "id": 1,
+        "userId": 1,
+        "boardId": 1,
+        "content": "Great post!"
+      },
+      {
+        "id": 2,
+        "userId": 2,
+        "boardId": 1,
+        "content": "Very informative!"
+      },
+      {
+        "id": 3,
+        "userId": 3,
+        "boardId": 2,
+        "content": "I have a question..."
+      },
+      {
+        "id": 4,
+        "userId": 1,
+        "boardId": 2,
+        "content": "Thanks for sharing!"
+      },
+      {
+        "id": 5,
+        "userId": 2,
+        "boardId": 3,
+        "content": "Interesting topic!"
+      },
+      {
+        "id": 6,
+        "userId": 3,
+        "boardId": 3,
+        "content": "Well written!"
+      },
+      {
+        "id": 7,
+        "userId": 1,
+        "boardId": 4,
+        "content": "This helped me a lot."
+      },
+      {
+        "id": 8,
+        "userId": 2,
+        "boardId": 4,
+        "content": "Looking forward to more posts!"
+      },
+      {
+        "id": 9,
+        "userId": 3,
+        "boardId": 5,
+        "content": "Keep up the good work!"
+      },
+      {
+        "id": 10,
+        "userId": 1,
+        "boardId": 5,
+        "content": "I learned something new."
+      }
+    ]
+  }
+  
