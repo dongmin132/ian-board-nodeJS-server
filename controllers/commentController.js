@@ -129,7 +129,7 @@ export const deleteComment = (req,res) => {
     if(!req.body.userId) {
         res.status(401).json({status:401,message:"Not_Authentication"})
     }
-
+    
 
     comments.splice(commentIndex,1)
     commentSaveFile(comments);
