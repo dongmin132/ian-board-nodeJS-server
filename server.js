@@ -1,6 +1,7 @@
 import express from 'express';
 import memberRouter from './routes/member.js'
-// import boardRouter from './routes/board.js';
+import boardRouter from './routes/board.js'
+
 import http from 'http';
 import cors from 'cors';
 
@@ -18,13 +19,14 @@ const server = express();
 server.use(cors({
     origin: 'http://localhost:3000',
     credentials: true, // 사용자 인증이 필요한 리소스(쿠키 ..등) 접근
-    // methods: "GET, PUT, POST, DELETE, PATCH"
+    methods: ['GET','PUT','POST','PATCH','DELETE']
 }));
 
 
 // server.use(cors({
-//     "origin": "*",
+//     "origin": "http://localhost:3000",
 //     "methods": "GET,HEAD,PUT,PATCH,POST,DELETE",
+//     "credentials": "true", // 사용자 인증이 필요한 리소스(쿠키 ..등) 접근
 //   }));
   
 
@@ -36,7 +38,7 @@ server.use('/img',express.static('img'));   // /img 경로로 접근할때 img�
 
 // 모든 요청에 대한 응답 헤더를 설정합니다.
 server.use('/members',memberRouter);
-
+server.use('/boards',boardRouter);
 
 const port = 3001;
 

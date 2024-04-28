@@ -1,1 +1,44 @@
-export const members =[{"id":1,"email":"name1@name1.com","password":"password1","nickname":"nicknam1s","profile_image":"/img/profile.png"},{"id":2,"email":"name2@name2.com","password":"password2","nickname":"nickname2","profile_image":"/img/profile.png"},{"id":3,"email":"name3@name3.com","password":"password3","nickname":"nickname3"},{"id":4,"email":"name4@name4","password":"password4","nickname":"nickname4"},{"id":5,"email":"name5@name5","password":"password5","nickname":"nickname5"},{"id":6,"email":"name6@name6","password":"password6","nickname":"nickname6"},{"id":7,"email":"name7@name7","password":"password7","nickname":"nickname7"},{"id":8,"email":"name8@name8","password":"password8","nickname":"nickname8"},{"id":9,"email":"name9@name9","password":"password9","nickname":"nickname9"},{"id":10,"email":"name10@name10","password":"password10","nickname":"nickname10"},{"email":"name15@name15","password":"password15","nickname":"nickname15","id":11},{"email":"name11@name1.com","password11":"Password1!","nickname":"nickname","id":12},{"id":13,"email":"a@a.com","password":"Password1!","nickname":"nick","profile_image":"/img/1713846428315-417355156.png"},{"id":14,"email":"name1@name1.com2","password":"Password1!","nickname":"nickname13","profile_image":"/img/1713863212914-363918849.png"},{"id":15,"email":"name1@name1.com12","password":"Password1!","nickname":"sad","profile_image":"/img/1713917572247-596129399.png"},{"id":16,"email":"name1@name1.com1","password":"Password1!","nickname":"nicknames","profile_image":"/img/1713921248771-161474596.jpeg"},{"id":17,"email":"name1@name1.co","password":"Password1!","nickname":"f","profile_image":"/img/1713921595194-224527111.png"}]
+export const members =[
+  {
+    "id": 1,
+    "email": "name1@name1.com",
+    "nickname": "user1",
+    "profile_image": "/img/1714014767907-933061677.jpeg",
+    "password": "Password1!"
+  },
+  {
+    "id": 2,
+    "email": "name2@name2.com",
+    "password": "Password2@",
+    "nickname": "nickname2",
+    "profile_image": "/img/1714031665058-729268478.jpeg"
+  },
+  {
+    "id": 3,
+    "email": "name3@name3.com",
+    "password": "Password3#",
+    "nickname": "nickname3",
+    "profile_image": "/img/1714031882214-187671749.jpeg"
+  },
+  {
+    "id": 4,
+    "email": "name4@name4.com",
+    "password": "Password4$",
+    "nickname": "nickname4",
+    "profile_image": "/img/1714031906738-86179288.jpeg"
+  },
+  {
+    "id": 5,
+    "email": "name5@name5.com",
+    "password": "Password5%",
+    "nickname": "nickname5",
+    "profile_image": "/img/1714031940373-807330961.png"
+  },
+  {
+    "id": 6,
+    "email": "name6@name6.com",
+    "password": "Password1!",
+    "nickname": "nickname6",
+    "profile_image": "/img/1714326989832-810499573.jpeg"
+  }
+]

@@ -4,7 +4,6 @@ import cookieParser from 'cookie-parser';
 import session from 'express-session';
 import multer from 'multer';
 // import { dirname }from 'path';
-import { fileURLToPath } from 'url';
 import { members } from '../models/members.js'
 import path from 'path'; // path 모듈 import
 
@@ -24,9 +23,11 @@ app.use(session({
 }));
 
 // multer 설정
-const storage = multer.diskStorage({
-    destination: 'img/',
-    filename: function (req, file, cb) {
+//stoarge multer.memoryStorage에 저장했다가 유효성 검사가 통과하면 그때 저장하는 방식도 있는데 좀 더 생각해보고 적용해보자
+const storage = multer.diskStorage({        
+    destination: 'img/',        //파일이 저장될 폴더
+    limits: { fileSize: 5 * 1024 * 1024 },      //파일 사이즈는 5MB
+    filename: function (req, file, cb) {        //destination에 저장된 파일명a
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
         const ext = path.extname(file.originalname);
         cb(null, uniqueSuffix + ext);
@@ -35,17 +36,12 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 
-// 현재 URL을 전부 보여줌
-const __filename = fileURLToPath(import.meta.url);
-// 현재 디렉터리 경로 까지만 보여줌
-const __dirname = path.dirname(__filename);
-
 
 //-----------------------------------------비즈니스 로직
 const loginCheck = (email, password) => {
     return members.find(member => member.email === email && member.password === password);
 }
-const findById= (memberId) => {
+const findById = (memberId) => {
     return members.find(member => memberId === member.id);
 }
 
@@ -72,7 +68,7 @@ const emailValidCheck = (email) => {
 }
 
 const nicknameValidCheck = (nickname) => {
-    if(members.find(member => nickname===member.nickname)){
+    if (members.find(member => nickname === member.nickname)) {
         return true;
     }
 
@@ -80,20 +76,25 @@ const nicknameValidCheck = (nickname) => {
 }
 
 const imgDelete = (imagePath) => {
-    fs.unlink('.'+imagePath, (err) => {
-        if(err) {
-            console.error('Error deleting image file: ', err);
-        } else {
-            console.log("이미지가 성공적으로 지워짐: ", imagePath);
-        }
-    });
+    if (fs.existsSync('.' + imagePath)) {
+        fs.unlink('.' + imagePath, (err) => {
+            if (err) {
+                console.log('Error deleting image file: ', err);
+            } else {
+                console.log("이미지가 성공적으로 지워짐: ", imagePath);
+            }
+        })
+    } else {
+        console.log("파일이 없음");
+    }
 }
 
-const memberDataFile = (memberJsonFile) => {
+const memberSaveFile = (memberJsonFile) => {
     // memberFile을 JSON.stringify()를 사용하여 JSON 문자열로 변환
 
     // JSON 문자열을 members.json 파일에 쓰기
-    fs.writeFile('./models/members.js', 'export const members =' + memberJsonFile, (err) => {
+    const memberJson=JSON.stringify(memberJsonFile,null,2);
+    fs.writeFile('./models/members.js', 'export const members =' + memberJson, (err) => {
         if (err) {
             console.error('Error writing JSON file:', err);
         } else {
@@ -122,15 +123,16 @@ export const register = (req, res) => {
     // console.log(req.body);
     upload.single('profileImage')(req, res, function (err) {
         const imagePath = '/' + req.file.path;
+        console.log(imagePath);
         if (err instanceof multer.MulterError) {
             // 업로드 오류 처리
             res.status(500).json({ message: 'upload_error' });
             return;
         }
 
-        if(!req.body.email || !req.body.password || !req.body.nickname || !req.file) {
+        if (!req.body.email || !req.body.password || !req.body.nickname || !req.file) {
             imgDelete(imagePath)
-            res.status(400).json({message:'빈칸이 존재'});
+            res.status(400).json({ message: '빈칸이 존재' });
             return;
         }
         // if(emailValidCheck(req.body.email)) {
@@ -143,7 +145,7 @@ export const register = (req, res) => {
         // req.file을 통해 업로드된 파일에 대한 정보에 접근할 수 있다.
         if (!emailValidCheck(req.body.email)) {
             //이미지 경로명 추출
-            
+
             // 업로드된 파일의 경로에서 확장자 추출
             // const extname = path.extname(req.file.originalname);
 
@@ -151,61 +153,115 @@ export const register = (req, res) => {
             members.push(memberRegister(imagePath, req.body));
             //추가한 멤버를 JSON형식의 문자열로 변환해 member.js에 넣어줌(디비 역할)
             // console.log("여기서 값을 확인을 한번 해보자: ",members);
-            memberDataFile(JSON.stringify(members));
+            memberSaveFile(members);
 
-            res.status(201).json({ status:201, message: 'regiseter_success' });
+            res.status(201).json({ status: 201, message: 'regiseter_success' });
         }
-        
+
     })
 }
 
-export const getMember = (req,res) => {
-    const memberId=req.params.memberId;
-    
-    const memberIndex=members.findIndex(member=> member.id === parseInt(memberId));
+export const getMember = (req, res) => {
+    const memberId = req.params.memberId;
+
+    const memberIndex = members.findIndex(member => member.id === parseInt(memberId));
     res.json(members[memberIndex]);
 }
 
-export const memberUpdate = (req,res) => {
-    const memberId =req.params.memberId;
-    //  멤버에 인덱스를 찾는 함수
-    const memberIndex = members.findIndex(member=> member.id == parseInt(memberId))
-    if(memberIndex==-1) {
-        res.status(404).json({message:'member not found'})
-        return;
-    }
-    if(nicknameValidCheck(req.body.nickname)) {
-        res.status(400).json({status:400,message:"invalid_user_id"})
-        return ;
-    }
-    
-    
-    members[memberIndex]={...members[memberIndex],...req.body}
-    memberDataFile(JSON.stringify(members))
-    res.status(200).json({status:200,message:"updata_member_success"})
-    
-        
-    
+export const memberUpdate = (req, res) => {
+    upload.single('profileImage')(req, res, function (err) {
+        const memberId = req.params.memberId;
+        //  멤버에 인덱스를 찾는 함수
+        const memberIndex = members.findIndex(member => member.id == parseInt(memberId))
+        if (memberIndex == -1) {
+            res.status(404).json({ message: 'member not found' })
+            return;
+        }
+
+        if (err instanceof multer.MulterError) {
+            // 업로드 오류 처리
+            res.status(500).json({ message: 'upload_error' });
+            return;
+        }
+        if (nicknameValidCheck(req.body.nickname)) {
+            res.status(400).json({ status: 400, message: "invalid_user_id" })
+            return;
+        }
+        if (req.file !== undefined) {
+            const imagePath = '/' + req.file.path;
+
+            imgDelete(members[memberIndex].profile_image);
+            // members[memberIndex] = { ...members[memberIndex], ...req.body }      //받아온 json형 객체를 한번에 붙여준다!
+            members[memberIndex].nickname = req.body.nickname;
+            members[memberIndex].profile_image = imagePath;
+
+            memberSaveFile(members)
+            res.status(200).json({ status: 200, message: "updata_member_success" })
+        }
+        else {
+            members[memberIndex].nickname = req.body.nickname;
+
+            memberSaveFile(members)
+            res.status(200).json({ status: 200, message: "update_nickname_success" })
+        }
+    })
 }
 
-export const checkEmail = (req,res) => {
+export const memberPassword = (req, res) => {
+    const memberId = parseInt(req.params.memberId)
+    const index = members.findIndex(member => memberId === member.id)
+    members[index].password=req.body.password;
+    console.log(req.body);
+    memberSaveFile(members);
+    if (memberId===null) {
+        res.status(401).json({status:401,message:"Unauthorization"})
+    } else if (index === -1) {
+        res.status(404).json({ status: 404, message: "member_not_found" })
+    } else if(index+1) {     //인덱스가 0부터 시작하므로 0값도 참으로 받을수있게 설정
+        res.status(200).json({ status:200,message:"password_update_success"})
+    } else {
+        res.status(500).json({message:'err'});
+    }
+}
 
+export const memberDelete = (req, res) => {
+    const memberId = parseInt(req.params.memberId);
+    console.log(memberId);
+    const index = members.findIndex(member => memberId === member.id);
+    if (memberId === null)
+        res.status(401).json({ status: 401, message: "Unauthorization" })
+
+    else if (index === -1)
+        res.status(404).json({ status: 404, message: "Member not found" });
+
+    else {//통과하는 부분
+        members.splice(index, 1)
+        res.cookie('userId', memberId, { maxAge: 0, path: '/' });
+        res.status(200).json({ status: 200, message: "Member delete success!" })
+
+        memberSaveFile(members);
+
+    }
+}
+
+
+export const checkEmail = (req, res) => {
     const email = emailValidCheck(req.body.email)
-    if(email) {
-        res.status(400).json({status:400,message:'already_exist_email'})
-    }
-    else  {
-        res.status(200).json({status:200,message:'email_success'})
-    }
-}
-
-export const checkNickname = (req,res) => {
-    const nickname = nicknameValidCheck(req.body.nickname)
-    if(nickname) {
-        res.status(400).json({status:400,message:'already_exist_nickname'})
+    if (email) {
+        res.status(400).json({ status: 400, message: 'already_exist_email' })
     }
     else {
-        res.status(200).json({status:200,message:'nickname_success'});
+        res.status(200).json({ status: 200, message: 'email_success' })
+    }
+}
+
+export const checkNickname = (req, res) => {
+    const nickname = nicknameValidCheck(req.body.nickname)
+    if (nickname) {
+        res.status(400).json({ status: 400, message: 'already_exist_nickname' })
+    }
+    else {
+        res.status(200).json({ status: 200, message: 'nickname_success' });
     }
 }
 

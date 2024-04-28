@@ -1,5 +1,5 @@
 import express from 'express';
-import {login,register, getMember,memberUpdate,checkEmail,checkNickname} from '../controllers/memberController.js';
+import {login,register, getMember,memberUpdate,checkEmail,checkNickname,memberDelete, memberPassword} from '../controllers/memberController.js';
 // import path from 'path';
 
 // import multer from 'multer';
@@ -23,8 +23,12 @@ router.get('/:memberId/getMember',getMember);
 
 router.patch('/:memberId',memberUpdate);
 
+router.patch('/:memberId/password',memberPassword);
+
 router.post('/check-email',checkEmail);
 
 router.post('/checkNickname',checkNickname);
+
+router.delete('/:memberId',memberDelete);
 
 export default router;
