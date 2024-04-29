@@ -31,7 +31,7 @@ export const comments =[
     "id": 5,
     "userId": 2,
     "boardId": 3,
-    "content": "Interesting topic!",
+    "content": "아령하세요",
     "createdAt": "2024-04-23 11:55:20"
   },
   {

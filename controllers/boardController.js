@@ -1,7 +1,6 @@
 import fs from 'fs';
 import express from 'express';
 import cookieParser from 'cookie-parser';
-import session from 'express-session';
 import multer from 'multer';
 // import { dirname }from 'path';
 import { boards } from '../models/boards.js'
@@ -111,7 +110,7 @@ const boardSaveFile = (boardJsonFile) => {
 /*---------------------------------------------*/
 
 export const getBoardsWithMember = (req, res) => {
-
+    // console.log(`세션값: ${JSON.stringify(req.session.userId)}`);
     const boardsWithMember = boardsWithMemberDto();
     if (boards.length) {
         res.status(200).json({ status: 200, message: "get_post", data: boardsWithMember })
@@ -159,6 +158,7 @@ export const getBoard = (req, res) => {
         res.status(404).json({ status: 404, message: "not_found_board" })
         return;
     }
+    
     const data = boards[boardIndex];
     res.status(200).json({ status: 200, message: "get_board_success", data: data })
 }

@@ -1,7 +1,7 @@
 import fs from 'fs';
 import express from 'express';
 import cookieParser from 'cookie-parser';
-import session from 'express-session';
+// import session from 'express-session';
 import multer from 'multer';
 // import { dirname }from 'path';
 import { members } from '../models/members.js'
@@ -15,16 +15,11 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 
-// 세션 설정
-app.use(session({
-    secret: 'your_secret_key',
-    resave: false,
-    saveUninitialized: true
-}));
+
 
 // multer 설정
 //stoarge multer.memoryStorage에 저장했다가 유효성 검사가 통과하면 그때 저장하는 방식도 있는데 좀 더 생각해보고 적용해보자
-const storage = multer.diskStorage({        
+const storage = multer.diskStorage({
     destination: 'img/',        //파일이 저장될 폴더
     limits: { fileSize: 5 * 1024 * 1024 },      //파일 사이즈는 5MB
     filename: function (req, file, cb) {        //destination에 저장된 파일명a
@@ -93,7 +88,7 @@ const memberSaveFile = (memberJsonFile) => {
     // memberFile을 JSON.stringify()를 사용하여 JSON 문자열로 변환
 
     // JSON 문자열을 members.json 파일에 쓰기
-    const memberJson=JSON.stringify(memberJsonFile,null,2);
+    const memberJson = JSON.stringify(memberJsonFile, null, 2);
     fs.writeFile('./models/members.js', 'export const members =' + memberJson, (err) => {
         if (err) {
             console.error('Error writing JSON file:', err);
@@ -109,9 +104,10 @@ export const login = (req, res) => {
     const { email, password } = req.body;
 
     const member = loginCheck(email, password);
-
+    
     if (member) {
-        res.cookie('userId', member.id, { maxAge: 900000000, path: '/' });
+        req.session.userId = member.id;
+        console.log(req.session);
 
         res.status(200).json({ message: 'login_success', data: member });
     } else {
@@ -120,8 +116,10 @@ export const login = (req, res) => {
 }
 
 export const register = (req, res) => {
-    // console.log(req.body);
+    
+    
     upload.single('profileImage')(req, res, function (err) {
+        
         const imagePath = '/' + req.file.path;
         console.log(imagePath);
         if (err instanceof multer.MulterError) {
@@ -162,9 +160,10 @@ export const register = (req, res) => {
 }
 
 export const getMember = (req, res) => {
-    const memberId = req.params.memberId;
-
-    const memberIndex = members.findIndex(member => member.id === parseInt(memberId));
+    
+    const memberId = req.userId
+    const memberIndex = members.findIndex(member => member.id === memberId);
+    console.log("memberID:",memberId);
     res.json(members[memberIndex]);
 }
 
@@ -208,19 +207,20 @@ export const memberUpdate = (req, res) => {
 }
 
 export const memberPassword = (req, res) => {
+    console.log(req.session);
     const memberId = parseInt(req.params.memberId)
     const index = members.findIndex(member => memberId === member.id)
-    members[index].password=req.body.password;
+    members[index].password = req.body.password;
     console.log(req.body);
     memberSaveFile(members);
-    if (memberId===null) {
-        res.status(401).json({status:401,message:"Unauthorization"})
+    if (memberId === null) {
+        res.status(401).json({ status: 401, message: "Unauthorization" })
     } else if (index === -1) {
         res.status(404).json({ status: 404, message: "member_not_found" })
-    } else if(index+1) {     //인덱스가 0부터 시작하므로 0값도 참으로 받을수있게 설정
-        res.status(200).json({ status:200,message:"password_update_success"})
+    } else if (index + 1) {     //인덱스가 0부터 시작하므로 0값도 참으로 받을수있게 설정
+        res.status(200).json({ status: 200, message: "password_update_success" })
     } else {
-        res.status(500).json({message:'err'});
+        res.status(500).json({ message: 'err' });
     }
 }
 
@@ -244,8 +244,25 @@ export const memberDelete = (req, res) => {
     }
 }
 
+export const logout = (req,res) => {
+    req.session.destroy(error => {
+        if (error) {
+                return res.status(500).json({
+                status: 500,
+                message: '로그아웃 중 문제가 발생했습니다.',
+            });
+        }
+        res.clearCookie('sessionId');
+        return res.status(200).json({
+            status: 200,
+            message: '성공적으로 로그아웃되었습니다.',
+        });
+    });
+}
+
 
 export const checkEmail = (req, res) => {
+    console.log(JSON.stringify(req.session))
     const email = emailValidCheck(req.body.email)
     if (email) {
         res.status(400).json({ status: 400, message: 'already_exist_email' })

@@ -40,5 +40,12 @@ export const members =[
     "password": "Password1!",
     "nickname": "nickname6",
     "profile_image": "/img/1714326989832-810499573.jpeg"
+  },
+  {
+    "id": 7,
+    "email": "name1@name1.com1",
+    "password": "Password111!",
+    "nickname": "dsf",
+    "profile_image": "/img/1714387627126-236262409.png"
   }
 ]

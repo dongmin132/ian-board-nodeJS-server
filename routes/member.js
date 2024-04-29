@@ -1,5 +1,6 @@
 import express from 'express';
-import {login,register, getMember,memberUpdate,checkEmail,checkNickname,memberDelete, memberPassword} from '../controllers/memberController.js';
+import { isAuthenticated } from '../config/isAuthentication.js';
+import {login,register, getMember,memberUpdate,checkEmail,checkNickname,memberDelete, memberPassword, logout} from '../controllers/memberController.js';
 // import path from 'path';
 
 // import multer from 'multer';
@@ -13,13 +14,16 @@ import {login,register, getMember,memberUpdate,checkEmail,checkNickname,memberDe
 //   });
 //   const upload = multer({ storage: storage });
 
+
 const router = express.Router();
 
 router.post('/login',login);
 
+router.get('/logout',logout);
+
 router.post('/register',register);
 
-router.get('/:memberId/getMember',getMember);
+router.get('/getMember',isAuthenticated,getMember);
 
 router.patch('/:memberId',memberUpdate);
 
