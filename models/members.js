@@ -2,7 +2,7 @@ export const members =[
   {
     "id": 1,
     "email": "name1@name1.com",
-    "nickname": "user1",
+    "nickname": "user11",
     "profile_image": "/img/1714014767907-933061677.jpeg",
     "password": "Password1!"
   },
@@ -47,5 +47,12 @@ export const members =[
     "password": "Password111!",
     "nickname": "dsf",
     "profile_image": "/img/1714387627126-236262409.png"
+  },
+  {
+    "id": 8,
+    "email": "name1@name1.com2",
+    "password": "Password1!",
+    "nickname": "nickname1",
+    "profile_image": "/img/1714463418670-831453020.png"
   }
 ]

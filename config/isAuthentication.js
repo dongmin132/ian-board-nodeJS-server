@@ -5,7 +5,7 @@ export const isAuthenticated = (req, res, next)  => {
         next();
     }
     else {
-        console.log("여기들어와짐");
+        // console.log("여기들어와짐");
         res.status(401).json({ status:401, message: 'Un_authorized' });
     }
   }

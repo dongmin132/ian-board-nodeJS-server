@@ -8,6 +8,7 @@ import { members } from '../models/members.js'
 import { comments } from '../models/comments.js'
 import path from 'path'; // path 모듈 import
 import { getCurrentDateTime } from '../utils/getDate.js';
+import { boardSaveFile } from '../config/BoardSaveFile.js';
 
 
 
@@ -18,11 +19,17 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 // multer 설정
-const storage = multer.memoryStorage({
-    destination: 'img/boards/',        //파일이 저장될 폴더
-    limits: { fileSize: 5 * 1024 * 1024 },      //파일 사이즈는 5MB
+// const storage = multer.memoryStorage({
+//     destination: 'img/boards/',        //파일이 저장될 폴더
+//     limits: { fileSize: 5 * 1024 * 1024 },      //파일 사이즈는 5MB
+// });
+// const upload = multer({ storage: storage });
+
+const storage = multer.memoryStorage();
+const upload = multer({
+    storage: storage,
+    limits: { fileSize: 3 * 1024 * 1024 }
 });
-const upload = multer({ storage: storage });
 
 
 /*---------------비즈니스 로직--------------------*/
@@ -50,14 +57,14 @@ const boardWithMemberDto = (board) => {
 }
 
 
-const boardRegister = (createdAt, imagePath, datas) => {
+const boardRegister = (createdAt, imagePath, datas, userId) => {
     const id = boards[boards.length - 1].id + 1;
     const board = {
         id: id,
-        title: datas.title,
-        content: datas.content,
+        title: datas.title.substring(0,26),
+        content: datas.content.substring(0, 500),
         //formData 형식에서는 userId 문자열로 변환되기 때문에 변환 작업이 필요하다
-        userId: parseInt(datas.userId),
+        userId: userId,
         contentImage: imagePath,
         createdAt: createdAt
     }
@@ -94,19 +101,6 @@ const imgDelete = (imagePath) => {
     }
 }
 
-const boardSaveFile = (boardJsonFile) => {
-    // memberFile을 JSON.stringify()를 사용하여 JSON 문자열로 변환
-
-    // JSON 문자열을 members.json 파일에 쓰기
-    const boardJson = JSON.stringify(boardJsonFile, null, 2);
-    fs.writeFile('./models/boards.js', 'export const boards =' + boardJson, (err) => {
-        if (err) {
-            console.error('Error writing JSON file:', err);
-        } else {
-            console.log('JSON file has been saved.');
-        }
-    });
-};
 /*---------------------------------------------*/
 
 export const getBoardsWithMember = (req, res) => {
@@ -122,18 +116,29 @@ export const getBoardsWithMember = (req, res) => {
 export const createBoarad = (req, res) => {
 
     upload.single('contentImage')(req, res, function (err) {
-        if (!boards.find(board => board.userId === parseInt(req.body.userId))) {
+        if (err instanceof multer.MulterError) {
+            if(err.code === 'LIMIT_FILE_SIZE') {
+                res.status(413).send({status:413,message:'file_too_large'});
+                return;
+            }
+            // 업로드 오류 처리
+            res.status(500).json({ message: 'upload_error' });
+            return;
+        } 
+    
+        const userId = req.userId;
+        if (!members.find(member => member.id === (userId))) {
             res.status(404).json({ message: 'not_found_user', status: 404 })
             return;
         }
-        if (!req.body.userId) {
+        if (!userId) {
             res.status(401).json({ message: 'Authentication required', status: 401 });
             return;
         }
 
         //이미지를 저장하고 파일 경로를 리턴함.
-        const filePath = req.file?ImageSave(req.file):null;
-        boards.push(boardRegister(getCurrentDateTime(), filePath, req.body));
+        const filePath = req.file ? ImageSave(req.file) : null;
+        boards.push(boardRegister(getCurrentDateTime(), filePath, req.body, userId));
         boardSaveFile(boards);
 
         res.status(201).json({ status: 201, message: "board_register_success" })
@@ -141,6 +146,7 @@ export const createBoarad = (req, res) => {
 }
 
 export const getBoardWithComment = (req, res) => {
+    const userId = req.userId;
     const boardIndex = boards.findIndex(board => parseInt(req.params.boardId) === board.id);  //이 값이 스트링형일수가있다.
     if (boardIndex === -1) {
         res.status(404).json({ status: 404, message: "not_found_board" })
@@ -148,7 +154,9 @@ export const getBoardWithComment = (req, res) => {
     }
     const board = boardWithMemberDto(boards[boardIndex]);
 
-    res.status(200).json({ status: 200, message: 'get_data_success', data: board });
+    console.log(board)
+
+    res.status(200).json({ status: 200, message: 'get_data_success', data: board, userId: userId });
 }
 
 export const getBoard = (req, res) => {
@@ -158,67 +166,83 @@ export const getBoard = (req, res) => {
         res.status(404).json({ status: 404, message: "not_found_board" })
         return;
     }
-    
+
     const data = boards[boardIndex];
     res.status(200).json({ status: 200, message: "get_board_success", data: data })
 }
 
 export const updateBoard = (req, res) => {
     upload.single('contentImage')(req, res, function (err) {
+        if (err instanceof multer.MulterError) {
+            if(err.code === 'LIMIT_FILE_SIZE') {
+                res.status(413).send({status:413,message:'file_too_large'});
+                return;
+            }
+            // 업로드 오류 처리
+            res.status(500).json({ message: 'upload_error' });
+            return;
+        } 
+        const userId = req.userId;
         const boardId = parseInt(req.params.boardId)
-        const boardIndex = boards.findIndex(board=> board.id===boardId)
-        
-        if (!boards.find(board => board.userId === parseInt(req.body.userId))) {
+        const boardIndex = boards.findIndex(board => board.id === boardId)
+
+        if (!boards.find(board => board.userId === userId)) {
             res.status(404).json({ message: 'not_found_user', status: 404 })
             return;
         }
-        if (!req.body.userId) {
+        if (!userId) {
             res.status(401).json({ message: 'Authentication required', status: 401 });
             return;
         }
-
+        if (boards[boardIndex].userId !== userId) {
+            res.status(403).json({ status: 403, message: "permission_not_matched_member" })
+            return;
+        }
         //이미지를 저장하고 파일 경로를 리턴함.
-        const imagePath = req.file?ImageSave(req.file):null;
-        
-        imgDelete(boards[boardIndex].contentImage);
+        const imagePath = req.file ? ImageSave(req.file) : null;
+
+        //이전 이미지 삭제
+        imgDelete(boards[boardIndex].contentImage);     
 
         boards[boardIndex].contentImage
         boards[boardIndex] = {
             ...boards[boardIndex],
-            title: req.body.title,
-            content: req.body.content,
-            userId: parseInt(req.body.userId),
+            title: req.body.title.substring(0,26),
+            content: req.body.content.substring(0, 255),
+            userId: userId,
             contentImage: imagePath,
             createdAt: getCurrentDateTime()
         }
-       
+
         boardSaveFile(boards);
 
-        res.status(201).json({ status: 201, message: "board_register_success" })
+        res.status(200).json({ status: 200, message: "board_update_success" })
     })
 
 }
 
-export const deleteBoard = (req,res) => {
+export const deleteBoard = (req, res) => {
+    const userId = req.userId;
     const boardId = parseInt(req.params.boardId);
-    const boardIndex = boards.findIndex(board=> board.id === boardId)
+    const boardIndex = boards.findIndex(board => board.id === boardId)
     if (boardIndex === -1) {
-        res.status(404).json({status:404,message:'board_not_found'})
+        res.status(404).json({ status: 404, message: 'board_not_found' })
         return;
     }
-    
-    if(boardId!==boards[boardIndex].id) {
-        res.status(403).json({status:403,message:"permission_not_matched_member"})
-        return ;
+
+    if (userId !== boards[boardIndex].userId) {
+        res.status(403).json({ status: 403, message: "permission_not_matched_member" })
+        return;
     }
-    if(!req.body.userId) {
-        res.status(401).json({status:401,message:"Not_Authentication"})
+
+    if (!userId) {
+        res.status(401).json({ status: 401, message: "Not_Authentication" })
     }
-    
+
 
     imgDelete(boards[boardIndex].contentImage);
-    boards.splice(boardIndex,1);
+    boards.splice(boardIndex, 1);
     boardSaveFile(boards);
 
-    res.status(200).json({status:200,message:'board_delete_sucess'})
+    res.status(200).json({ status: 200, message: 'board_delete_sucess' })
 }

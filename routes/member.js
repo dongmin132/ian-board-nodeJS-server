@@ -25,14 +25,16 @@ router.post('/register',register);
 
 router.get('/getMember',isAuthenticated,getMember);
 
-router.patch('/:memberId',memberUpdate);
+router.patch('/',isAuthenticated,memberUpdate);
 
-router.patch('/:memberId/password',memberPassword);
+router.patch('/password',isAuthenticated,memberPassword);
 
 router.post('/check-email',checkEmail);
 
 router.post('/checkNickname',checkNickname);
 
-router.delete('/:memberId',memberDelete);
+router.delete('/',isAuthenticated,memberDelete);
+
+
 
 export default router;

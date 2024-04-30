@@ -54,12 +54,5 @@ export const comments =[
     "boardId": 4,
     "content": "Looking forward to more posts!",
     "createdAt": "2024-04-20 16:40:55"
-  },
-  {
-    "id": 9,
-    "userId": 1,
-    "boardId": 1,
-    "content": "내용",
-    "createdAt": "2024-04-28 23:59:57"
   }
 ]
