@@ -1,5 +1,5 @@
 import fs from 'fs';
-const imgDelete = (imagePath) => {
+export const imgDelete = (imagePath) => {
     if (fs.existsSync('.' + imagePath)) {
         fs.unlink('.' + imagePath, (err) => {
             if (err) {

@@ -9,8 +9,8 @@ import { comments } from '../models/comments.js'
 import path from 'path'; // path 모듈 import
 import { getCurrentDateTime } from '../utils/getDate.js';
 import { boardSaveFile } from '../config/BoardSaveFile.js';
-
-
+import { commentSaveFile } from '../config/CommentSaveFile.js';
+import { imgDelete } from '../config/imgDelete.js';
 
 const app = express();
 app.use(express.json());
@@ -18,12 +18,6 @@ app.use(express.urlencoded({ extended: true }));
 //세션 및 쿠키 설정
 app.use(cookieParser());
 
-// multer 설정
-// const storage = multer.memoryStorage({
-//     destination: 'img/boards/',        //파일이 저장될 폴더
-//     limits: { fileSize: 5 * 1024 * 1024 },      //파일 사이즈는 5MB
-// });
-// const upload = multer({ storage: storage });
 
 const storage = multer.memoryStorage();
 const upload = multer({
@@ -58,7 +52,7 @@ const boardWithMemberDto = (board) => {
 
 
 const boardRegister = (createdAt, imagePath, datas, userId) => {
-    const id = boards[boards.length - 1].id + 1;
+    const id = boards.length > 0 ?boards[boards.length - 1].id + 1 : 1;
     const board = {
         id: id,
         title: datas.title.substring(0,26),
@@ -70,8 +64,13 @@ const boardRegister = (createdAt, imagePath, datas, userId) => {
     }
     return board;
 }
-
-
+const deleteBoardCascade = (boardId) => {
+    for(let i=comments.length-1;i>=0;i--) {
+        if(comments[i].boardId===boardId) {
+            comments.splice(i,1);
+        }
+    }
+}
 
 const ImageSave = (file) => {
     const randomImageName = Date.now() + '-' + Math.round(Math.random() * 1E9) + path.extname(file.originalname);
@@ -85,20 +84,6 @@ const ImageSave = (file) => {
     }
 
     return filePath;
-}
-
-const imgDelete = (imagePath) => {
-    if (fs.existsSync('.' + imagePath)) {
-        fs.unlink('.' + imagePath, (err) => {
-            if (err) {
-                console.log('Error deleting image file: ', err);
-            } else {
-                console.log("이미지가 성공적으로 지워짐: ", imagePath);
-            }
-        })
-    } else {
-        console.log("파일이 없음");
-    }
 }
 
 /*---------------------------------------------*/
@@ -240,9 +225,11 @@ export const deleteBoard = (req, res) => {
     }
 
 
+    deleteBoardCascade(boardId);
     imgDelete(boards[boardIndex].contentImage);
     boards.splice(boardIndex, 1);
     boardSaveFile(boards);
+    commentSaveFile(comments);
 
     res.status(200).json({ status: 200, message: 'board_delete_sucess' })
 }

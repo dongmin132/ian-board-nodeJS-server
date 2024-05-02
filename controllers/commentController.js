@@ -7,7 +7,6 @@ import { members } from '../models/members.js'
 import { comments } from '../models/comments.js'
 import path from 'path'; // path 모듈 import
 import { getCurrentDateTime } from '../utils/getDate.js';
-import { imgDelete } from '../config/imgDelete.js';
 import { commentSaveFile } from '../config/CommentSaveFile.js';
 
 
@@ -31,7 +30,7 @@ const addMemberData = (comment) => {
 }
 
 const commentRegister = (data,pathVariable,userId) => {
-    const commentId = comments[comments.length - 1].id + 1;
+    const commentId = comments > 0 ?comments[comments.length - 1].id + 1 : 1;
 
     const comment = {
         id : commentId,
@@ -129,8 +128,7 @@ export const deleteComment = (req,res) => {
     if(!userId) {
         res.status(401).json({status:401,message:"Not_Authentication"})
     }
-    
-    imgDelete(comments[commentIndex].contentImage); // 이미지 삭제
+   
     comments.splice(commentIndex,1)
     commentSaveFile(comments);
     res.status(200).json({status:200,message:"comment_delete_success"});

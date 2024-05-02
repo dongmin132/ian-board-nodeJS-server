@@ -10,6 +10,8 @@ import { comments } from '../models/comments.js'
 import { memberSaveFile } from '../config/MemberSaveFile.js';
 import { boardSaveFile } from '../config/BoardSaveFile.js';
 import { commentSaveFile } from '../config/CommentSaveFile.js';
+import { imgDelete } from '../config/imgDelete.js';
+
 import path from 'path'; // path 모듈 import
 
 
@@ -18,8 +20,6 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 //세션 및 쿠키 설정
 app.use(cookieParser());
-
-
 
 
 // multer 설정
@@ -49,7 +49,7 @@ const findById = (memberId) => {
 }
 
 const memberRegister = (imagePath, data) => {
-    const memberId = members[members.length - 1].id + 1;  //id는 거의 1부터 오름차순으로 올라가기에 members에 가장 마지막 값에서 1을 더해주었다.
+    const memberId = members.length > 0 ? members[members.length - 1].id + 1 : 1;  //id는 거의 1부터 오름차순으로 올라가기에 members에 가장 마지막 값에서 1을 더해주었다.
     const member = {
         id: memberId,
         email: data.email, // FormData에서 email 필드 추출
@@ -108,7 +108,6 @@ export const login = (req, res) => {
 
     if (member) {
         req.session.userId = member.id;
-        console.log(req.session);
 
         res.status(200).json({ message: 'login_success', data: member });
     } else {
