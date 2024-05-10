@@ -11,6 +11,7 @@ import { getCurrentDateTime } from '../utils/getDate.js';
 import { boardSaveFile } from '../config/BoardSaveFile.js';
 import { commentSaveFile } from '../config/CommentSaveFile.js';
 import { imgDelete } from '../config/imgDelete.js';
+import { get } from 'http';
 
 const app = express();
 app.use(express.json());
@@ -39,7 +40,8 @@ const boardsWithMemberDto = () => boards.map(board => {
         commentsCount: commentsCount.length
     };
 });
-//board 하나의 멤버 정보를 담아준다.
+
+// board 하나의 멤버 정보를 담아준다.
 const boardWithMemberDto = (board) => {
     const matchingMember = members.find(member => board.userId === member.id);
     return {
@@ -50,6 +52,15 @@ const boardWithMemberDto = (board) => {
 
 }
 
+const addMember = (comment) => {
+    const matchingMember = members.find((member) => member.id === comment.userId)
+    return {
+        ...comment,
+        memberNickname: matchingMember ? matchingMember.nickname : null,
+        memberProfileImage: matchingMember ? matchingMember.profile_image : null,
+    }
+
+}
 
 const boardRegister = (createdAt, imagePath, datas, userId) => {
     const id = boards.length > 0 ?boards[boards.length - 1].id + 1 : 1;
@@ -130,31 +141,36 @@ export const createBoarad = (req, res) => {
     })
 }
 
-export const getBoardWithComment = (req, res) => {
+export const getBoardWithMemberWithComments = (req, res) => {
     const userId = req.userId;
-    const boardIndex = boards.findIndex(board => parseInt(req.params.boardId) === board.id);  //이 값이 스트링형일수가있다.
+    const boardId = parseInt(req.params.boardId)
+    const boardIndex = boards.findIndex(board => boardId === board.id);  //이 값이 스트링형일수가있다.
+    
     if (boardIndex === -1) {
         res.status(404).json({ status: 404, message: "not_found_board" })
         return;
     }
-    const board = boardWithMemberDto(boards[boardIndex]);
+    const boardMemberDto = boardWithMemberDto(boards[boardIndex]);       //게시판 정보의 
 
-    console.log(board)
+    const commentData = comments.filter((comment) => boardId === comment.boardId)       //보드 ID와 댓글의 보드Id가 같은 같을 찾는다
 
-    res.status(200).json({ status: 200, message: 'get_data_success', data: board, userId: userId });
+    const commentsMembersDto = commentData.map((comment)=> addMember(comment))      //찾은 값으로
+    
+
+    res.status(200).json({ status: 200, message: 'get_data_success', board: boardMemberDto, userId: userId, comments:commentsMembersDto });
 }
 
-export const getBoard = (req, res) => {
-    const boardId = parseInt(req.params.boardId);
-    const boardIndex = boards.findIndex(board => board.id === boardId);
-    if (boardIndex === -1) {
-        res.status(404).json({ status: 404, message: "not_found_board" })
-        return;
-    }
+// export const getBoard = (req, res) => {
+//     const boardId = parseInt(req.params.boardId);
+//     const boardIndex = boards.findIndex(board => board.id === boardId);
+//     if (boardIndex === -1) {
+//         res.status(404).json({ status: 404, message: "not_found_board" })
+//         return;
+//     }
 
-    const data = boards[boardIndex];
-    res.status(200).json({ status: 200, message: "get_board_success", data: data })
-}
+//     const data = boards[boardIndex];
+//     res.status(200).json({ status: 200, message: "get_board_success", data: data })
+// }
 
 export const updateBoard = (req, res) => {
     upload.single('contentImage')(req, res, function (err) {
@@ -207,6 +223,7 @@ export const updateBoard = (req, res) => {
 }
 
 export const deleteBoard = (req, res) => {
+  
     const userId = req.userId;
     const boardId = parseInt(req.params.boardId);
     const boardIndex = boards.findIndex(board => board.id === boardId)

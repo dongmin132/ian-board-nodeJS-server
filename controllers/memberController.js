@@ -84,7 +84,7 @@ const deleteMemberCascade = (memberId) => {
     
     for (let i = boards.length - 1; i >= 0; i--) {
         if (boards[i].userId === memberId) {
-            imageDelete(boards[i].contentImage);
+            imgDelete(boards[i].contentImage);
             boards.splice(i, 1);
         }
     }

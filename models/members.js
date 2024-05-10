@@ -33,5 +33,33 @@ export const members =[
     "password": "Password5%",
     "nickname": "nickname5",
     "profile_image": "/img/1714648428906-795774456.png"
+  },
+  {
+    "id": 6,
+    "email": "name1@name1.com1",
+    "password": "Password1!",
+    "nickname": "nick",
+    "profile_image": "/img/1714655509571-30136006.jpeg"
+  },
+  {
+    "id": 7,
+    "email": "name1@name.com",
+    "password": "Password2@",
+    "nickname": "닉네임입니다",
+    "profile_image": "/img/1714656811937-297144634.jpeg"
+  },
+  {
+    "id": 8,
+    "email": "email@email.com",
+    "password": "password",
+    "nickname": "nicss",
+    "profile_image": "/img/1715061449457-392958286.png"
+  },
+  {
+    "id": 9,
+    "email": "abc",
+    "password": "123",
+    "nickname": "1sdf",
+    "profile_image": "/img/1715062019066-312958527.png"
   }
 ]

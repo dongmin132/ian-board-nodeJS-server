@@ -17,20 +17,20 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 //----------------------비즈니스 로직----------------------
-const addMemberData = (comment) => {
-    const matchingMember = members.find(member => comment.userId === member.id);
-    console.log(JSON.stringify(matchingMember,null,2))
+// const addMemberData = (comment) => {
+//     const matchingMember = members.find(member => comment.userId === member.id);
+//     console.log(JSON.stringify(matchingMember,null,2))
 
-    return {
-        ...comment,
-        memberNickname: matchingMember ? matchingMember.nickname : null,
-        memberProfileImage: matchingMember ? matchingMember.profile_image : null,
-        memberId:matchingMember?matchingMember.id:null
-    };
-}
+//     return {
+//         ...comment,
+//         memberNickname: matchingMember ? matchingMember.nickname : null,
+//         memberProfileImage: matchingMember ? matchingMember.profile_image : null,
+//         memberId:matchingMember?matchingMember.id:null
+//     };
+// }
 
 const commentRegister = (data,pathVariable,userId) => {
-    const commentId = comments > 0 ?comments[comments.length - 1].id + 1 : 1;
+    const commentId = comments.length > 0 ?comments[comments.length - 1].id + 1 : 1;
 
     const comment = {
         id : commentId,
@@ -49,21 +49,18 @@ const commentRegister = (data,pathVariable,userId) => {
 
 //------------------------------------------------------
 // 나중에 reduce를 활용하여서도 한번 해보자
-export const getComments = (req, res) => {
-    const userId=req.userId;
-    const boardId = parseInt(req.params.boardId);
-    const commentData = comments.filter(comment => boardId === comment.boardId)   // 여러개 뽑아오기
+// export const getComments = (req, res) => {
+//     const userId=req.userId;
+//     const boardId = parseInt(req.params.boardId);
+//     const commentData = comments.filter(comment => boardId === comment.boardId)   // 여러개 뽑아오기
 
-    
-    
-    try {
-        const commentsWithMemberDto = commentData.map(comment => addMemberData(comment));
-        console.log(commentsWithMemberDto[1]);
-        res.status(200).json({ message: "comments_list_success", status: 200, data: commentsWithMemberDto, userId:userId });
-    } catch (error) {
-        res.status(500).json({ message: "An error occurred while processing the comments", status: 500 });
-    }
-}
+//     try {
+//         const commentsWithMemberDto = commentData.map(comment => addMemberData(comment));
+//         res.status(200).json({ message: "comments_list_success", status: 200, data: commentsWithMemberDto, userId:userId });
+//     } catch (error) {
+//         res.status(500).json({ message: "An error occurred while processing the comments", status: 500 });
+//     }
+// }
 
 
 export const createComment = (req, res) => {
@@ -98,10 +95,14 @@ export const updateComment = (req,res) => {
         return ;
     }
     if(parseInt(req.params.boardId)!==comments[commentIndex].boardId) {
+        console.log(`commentIndex: ${commentIndex}`)
+        console.log(req.params.boardId,comments[commentIndex].boardId)
         res.status(404).json({status:404,message:"boardId_mismatch"})
+        return ;
     }
     if(!userId){
         res.status(401).json({status:401,message:"not_authorization"});
+        return ;
     }
     if(comments[commentIndex].userId!==userId)
     {
@@ -120,14 +121,21 @@ export const updateComment = (req,res) => {
 export const deleteComment = (req,res) => {
     const userId = req.userId
     const commentId = parseInt(req.params.commentId);
+    console.log(commentId);
     const commentIndex = comments.findIndex(comment => commentId === comment.id);
-    if(userId!==comments[commentIndex].userId) {
-        res.status(403).json({status:403,message:"permission_not_matched_member"})
+    if(commentIndex===-1) {
+        res.status(404).json({status:404,message:"comment_not_found"});
         return ;
     }
     if(!userId) {
         res.status(401).json({status:401,message:"Not_Authentication"})
     }
+    console.log("삭제 할때 commentIndex는 ",commentIndex);
+    if(userId!==comments[commentIndex].userId) {
+        res.status(403).json({status:403,message:"permission_not_matched_member"})
+        return ;
+    }
+    
    
     comments.splice(commentIndex,1)
     commentSaveFile(comments);
