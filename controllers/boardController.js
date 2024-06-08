@@ -11,7 +11,8 @@ import { getCurrentDateTime } from '../utils/getDate.js';
 import { boardSaveFile } from '../config/BoardSaveFile.js';
 import { commentSaveFile } from '../config/CommentSaveFile.js';
 import { imgDelete } from '../config/imgDelete.js';
-import { get } from 'http';
+import { dbPool } from '../config/mysql.js';
+
 
 const app = express();
 app.use(express.json());
@@ -25,6 +26,7 @@ const upload = multer({
     storage: storage,
     limits: { fileSize: 3 * 1024 * 1024 }
 });
+
 
 
 /*---------------비즈니스 로직--------------------*/
@@ -49,7 +51,6 @@ const boardWithMemberDto = (board) => {
         memberNickname: matchingMember ? matchingMember.nickname : null,
         memberProfileImage: matchingMember ? matchingMember.profile_image : null
     }
-
 }
 
 const addMember = (comment) => {
@@ -99,19 +100,54 @@ const ImageSave = (file) => {
 
 /*---------------------------------------------*/
 
-export const getBoardsWithMember = (req, res) => {
+export const getBoardsWithMember =  async (req, res) => {
     // console.log(`세션값: ${JSON.stringify(req.session.userId)}`);
-    const boardsWithMember = boardsWithMemberDto();
-    if (boards.length) {
-        res.status(200).json({ status: 200, message: "get_post", data: boardsWithMember })
-    } else {
-        res.status(404).json({ status: 404, message: "No boards found" });
-    }
+    // const boardsWithMember = boardsWithMemberDto();
+    // if (boards.length) {
+    //     res.status(200).json({ status: 200, message: "get_post", data: boardsWithMember })
+    // } else {
+    //     res.status(404).json({ status: 404, message: "No boards found" });
+    // }
+        const sql = `
+        select 
+        b.board_id as boardId,
+        b.board_title as boardTitle,
+        b.board_like_count as boardLikeCount,
+        b.board_view_count as boardViewCount,
+        count(c.comment_content) as commentCount,
+        b.created_at as createdAt,
+        m.member_profileImage as memberProfileImage,
+        m.member_nickname as memberNickname
+    from board b
+    join 
+        member m on b.member_id = m.member_id
+    left join
+        comment c on b.board_id = c.board_id
+    group by
+        b.board_id
+    ORDER BY 
+        b.created_at DESC;
+        `;
+        try {
+          const connection = await dbPool.getConnection();
+          const [rows, fields] =  await connection.execute(sql);
+          const boardsWithMember = rows;
+          connection.release();
+          
+          if (rows.length) {
+            res.status(200).json({ status: 200, message: "get_post", data: boardsWithMember });
+        } else {
+            res.status(404).json({ status: 404, message: "No boards found" });
+        }
+        } catch (error) {
+            console.error(error);
+            res.status(500).json({ status: 500, message: "Internal Server Error" });
+        }
+    
 }
 
-export const createBoarad = (req, res) => {
-
-    upload.single('contentImage')(req, res, function (err) {
+export const createBoarad =  (req, res) => {
+    upload.single('contentImage')(req, res, async function (err) {
         if (err instanceof multer.MulterError) {
             if(err.code === 'LIMIT_FILE_SIZE') {
                 res.status(413).send({status:413,message:'file_too_large'});
@@ -131,13 +167,24 @@ export const createBoarad = (req, res) => {
             res.status(401).json({ message: 'Authentication required', status: 401 });
             return;
         }
-
-        //이미지를 저장하고 파일 경로를 리턴함.
-        const filePath = req.file ? ImageSave(req.file) : null;
-        boards.push(boardRegister(getCurrentDateTime(), filePath, req.body, userId));
-        boardSaveFile(boards);
-
-        res.status(201).json({ status: 201, message: "board_register_success" })
+        
+        try {
+            const filePath = req.file ? ImageSave(req.file) : null;
+            const conn = await dbPool.getConnection();
+            const sql = "insert into board(board_title,board_content,member_id,board_image) values(?,?,?,?)";
+            const values = [
+                req.body.title,
+                req.body.content,
+                userId,
+                filePath
+            ]
+            const [rows, fields] = await conn.execute(sql, values);
+            conn.release(); 
+            res.status(201).json({ status: 201, message: "board_register_success" })
+        } catch (error) {
+            console.error(error);
+            res.status(500).json({ status: 500, message: "Internal Server Error" });
+        }
     })
 }
 
@@ -155,22 +202,23 @@ export const getBoardWithMemberWithComments = (req, res) => {
     const commentData = comments.filter((comment) => boardId === comment.boardId)       //보드 ID와 댓글의 보드Id가 같은 같을 찾는다
 
     const commentsMembersDto = commentData.map((comment)=> addMember(comment))      //찾은 값으로
-    
+    // console.log(boardMemberDto);
 
-    res.status(200).json({ status: 200, message: 'get_data_success', board: boardMemberDto, userId: userId, comments:commentsMembersDto });
+    res.status(200).json({ status: 200, message: 'get_data_success', board: boardMemberDto, userId: userId, commentData:commentsMembersDto });
 }
 
-// export const getBoard = (req, res) => {
-//     const boardId = parseInt(req.params.boardId);
-//     const boardIndex = boards.findIndex(board => board.id === boardId);
-//     if (boardIndex === -1) {
-//         res.status(404).json({ status: 404, message: "not_found_board" })
-//         return;
-//     }
+export const getBoard = (req, res) => {
+    const boardId = parseInt(req.params.boardId);
+    const boardIndex = boards.findIndex(board => board.id === boardId);
+    if (boardIndex === -1) {
+        res.status(404).json({ status: 404, message: "not_found_board" })
+        return;
+    }
 
-//     const data = boards[boardIndex];
-//     res.status(200).json({ status: 200, message: "get_board_success", data: data })
-// }
+    const data = boards[boardIndex];
+
+    res.status(200).json({ status: 200, message: "get_board_success", data: data })
+}
 
 export const updateBoard = (req, res) => {
     upload.single('contentImage')(req, res, function (err) {

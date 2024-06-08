@@ -11,7 +11,7 @@ import { memberSaveFile } from '../config/MemberSaveFile.js';
 import { boardSaveFile } from '../config/BoardSaveFile.js';
 import { commentSaveFile } from '../config/CommentSaveFile.js';
 import { imgDelete } from '../config/imgDelete.js';
-
+import { dbPool } from '../config/mysql.js';
 import path from 'path'; // path 모듈 import
 
 
@@ -95,7 +95,6 @@ const deleteMemberCascade = (memberId) => {
             comments.splice(i, 1);
         }
     }
-   
 }
 
 
@@ -108,18 +107,14 @@ export const login = (req, res) => {
 
     if (member) {
         req.session.userId = member.id;
-
-        res.status(200).json({ message: 'login_success', data: member });
+        res.status(200).json({ message: 'login_success', userId: member.id });
     } else {
         res.status(401).json({ message: 'Authenthication_err' })
     }
 }
 
-export const register = (req, res) => {
-
-
-    upload.single('profileImage')(req, res, function (err) {
-
+export const register =  (req, res) => {
+    upload.single('profileImage')(req, res, async function (err) {
         if (err instanceof multer.MulterError) {
             if (err.code === 'LIMIT_FILE_SIZE') {
                 res.status(413).send({ status: 413, message: 'file_too_large' });
@@ -131,7 +126,6 @@ export const register = (req, res) => {
         }
 
         const imagePath = '/' + req.file.path;
-        console.log(imagePath);
         if (!req.body.email || !req.body.password || !req.body.nickname || !req.file) {
             imgDelete(imagePath)
             res.status(400).json({ message: '빈칸이 존재' });
@@ -140,30 +134,42 @@ export const register = (req, res) => {
 
         // 파일 업로드가 성공하면 여기에 도달한다.
         // req.file을 통해 업로드된 파일에 대한 정보에 접근할 수 있다.
+        try {
         if (!emailValidCheck(req.body.email)) {
-            //이미지 경로명 추출
-
-            // 업로드된 파일의 경로에서 확장자 추출
-            // const extname = path.extname(req.file.originalname);
-
-            //members에 멤버를 추가해줌.
-            members.push(memberRegister(imagePath, req.body));
-            //추가한 멤버를 JSON형식의 문자열로 변환해 member.js에 넣어줌(디비 역할)
-            // console.log("여기서 값을 확인을 한번 해보자: ",members);
-            memberSaveFile(members);
-
+            const conn = await dbPool.getConnection();
+            const sql = "insert into member(member_email,member_password,member_nickname,member_profileImage) values(?,?,?,?)";
+            const values = [
+                req.body.email,
+                req.body.password,
+                req.body.nickname,
+                imagePath
+            ]
+            const [rows, fields] = await conn.execute(sql, values);
+            conn.release();
             res.status(201).json({ status: 201, message: 'regiseter_success' });
         }
-
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ message: 'error' });
+    }
     })
 }
 
 export const getMember = (req, res) => {
 
     const memberId = req.userId
+    if(memberId === null) {
+        res.status(401).json({status:401,message:'Unauthorization'})
+        return;
+    }
     const memberIndex = members.findIndex(member => member.id === memberId);
+    if(memberIndex === -1) {
+        console.log("여기 들어가지잫아")
+        res.status(404).json({status:404,message:'member_not_found'})
+        return;
+    }
 
-    res.json(members[memberIndex]);
+    res.status(200).json({status:200,member:members[memberIndex]});
 }
 
 export const memberUpdate = (req, res) => {
@@ -250,6 +256,7 @@ export const memberDelete = (req, res) => {
     
     imgDelete(members[memberIndex].profile_image);
     members.splice(memberIndex, 1)
+    res.clearCookie('sessionId');
     memberSaveFile(members);
     boardSaveFile(boards);
     commentSaveFile(comments);

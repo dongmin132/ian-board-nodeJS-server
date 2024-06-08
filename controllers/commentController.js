@@ -65,7 +65,7 @@ const commentRegister = (data,pathVariable,userId) => {
 
 export const createComment = (req, res) => {
     const userId = req.userId;
-    console.log(userId)
+    console.log("boardId :",req.params.boardId);
     if(!boards.find(board=>parseInt(req.params.boardId)===board.id)) {
         res.status(400).json({status:400,message:'invalid_board_id'})
         return ;
@@ -121,7 +121,7 @@ export const updateComment = (req,res) => {
 export const deleteComment = (req,res) => {
     const userId = req.userId
     const commentId = parseInt(req.params.commentId);
-    console.log(commentId);
+    console.log("커멘트 ID:",commentId);
     const commentIndex = comments.findIndex(comment => commentId === comment.id);
     if(commentIndex===-1) {
         res.status(404).json({status:404,message:"comment_not_found"});

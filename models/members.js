@@ -3,7 +3,7 @@ export const members =[
     "id": 1,
     "email": "name1@name1.com",
     "password": "Password1!",
-    "nickname": "nickname1",
+    "nickname": "24nickname",
     "profile_image": "/img/1714648330482-227246340.jpeg"
   },
   {
@@ -54,12 +54,5 @@ export const members =[
     "password": "password",
     "nickname": "nicss",
     "profile_image": "/img/1715061449457-392958286.png"
-  },
-  {
-    "id": 9,
-    "email": "abc",
-    "password": "123",
-    "nickname": "1sdf",
-    "profile_image": "/img/1715062019066-312958527.png"
   }
 ]

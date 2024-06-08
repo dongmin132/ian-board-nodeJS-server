@@ -1,5 +1,5 @@
 export const isAuthenticated = (req, res, next)  => {
-    console.log(req.session.userId)
+
     if (req.session.userId) {
         req.userId=req.session.userId;
         next();
@@ -10,7 +10,7 @@ export const isAuthenticated = (req, res, next)  => {
   }
 
   export const isAuthenticatedBoards = (req, res, next)  => {
-    console.log(req.session.userId)
+
     if (req.session.userId) {
         req.userId=req.session.userId;
         next();
