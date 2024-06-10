@@ -27,7 +27,7 @@ app.use(cookieParser());
 const storage = multer.diskStorage({
     destination: 'img/',        //파일이 저장될 폴더
 
-    filename: function (req, file, cb) {        //destination에 저장된 파일명a
+    filename: function (req, file, cb) {        //destination에 저장된 파일명
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
         const ext = path.extname(file.originalname);
         cb(null, uniqueSuffix + ext);
@@ -61,42 +61,35 @@ const memberRegister = (imagePath, data) => {
     return member;
 }
 
-const emailValidCheck = (email) => {
-    if (members.find(member => member.email === email)) {
-        // console.log(members);
+const emailValidCheck = async (email) => {
+    const conn = await dbPool.getConnection();
+    try {
+        const sql = "select * from member where member_email = ?";
+        const [rows, fields] = await conn.execute(sql, [email]);
+
+
+        if (rows.length > 0) {
+            console.log('이메일이 있데요');
+            return true;
+        }
+        return false;
+    } catch (error) {
+        console.error(error);
+    } finally {
+        conn.release();
+    }
+}
+
+const nicknameValidCheck = async (nickname) => {
+    const conn = await dbPool.getConnection();
+    const sql = "select member_nickname from member where member_nickname = ?";
+    const [currentNickname] = await conn.execute(sql, [nickname]);
+
+    if (currentNickname[0]) {
         return true;
     }
-    // console.log(email);
     return false;
 }
-
-const nicknameValidCheck = (nickname) => {
-    if (members.find(member => nickname === member.nickname)) {
-        return true;
-    }
-
-    return false;
-}
-
-
-
-const deleteMemberCascade = (memberId) => {
-    
-    for (let i = boards.length - 1; i >= 0; i--) {
-        if (boards[i].userId === memberId) {
-            imgDelete(boards[i].contentImage);
-            boards.splice(i, 1);
-        }
-    }
-
-    for (let i = comments.length - 1; i >= 0; i--) {
-        if (comments[i].userId === memberId) {
-            console.log(`Deleting comment at index ${i}`);
-            comments.splice(i, 1);
-        }
-    }
-}
-
 
 //--------------------------------------------------------
 
@@ -113,7 +106,7 @@ export const login = (req, res) => {
     }
 }
 
-export const register =  (req, res) => {
+export const register = (req, res) => {
     upload.single('profileImage')(req, res, async function (err) {
         if (err instanceof multer.MulterError) {
             if (err.code === 'LIMIT_FILE_SIZE') {
@@ -135,7 +128,12 @@ export const register =  (req, res) => {
         // 파일 업로드가 성공하면 여기에 도달한다.
         // req.file을 통해 업로드된 파일에 대한 정보에 접근할 수 있다.
         try {
-        if (!emailValidCheck(req.body.email)) {
+            if (await emailValidCheck(req.body.email)) {
+                console.log('이메일 중복');
+                res.status(409).json({ status: 409, message: '이메일 중복' });
+                return;
+            }
+
             const conn = await dbPool.getConnection();
             const sql = "insert into member(member_email,member_password,member_nickname,member_profileImage) values(?,?,?,?)";
             const values = [
@@ -148,32 +146,78 @@ export const register =  (req, res) => {
             conn.release();
             res.status(201).json({ status: 201, message: 'regiseter_success' });
         }
-    } catch (error) {
-        console.log(error);
-        res.status(500).json({ message: 'error' });
-    }
+
+        catch (error) {
+            console.log(error);
+            res.status(500).json({ message: 'error' });
+        }
     })
 }
 
-export const getMember = (req, res) => {
-
-    const memberId = req.userId
-    if(memberId === null) {
-        res.status(401).json({status:401,message:'Unauthorization'})
+export const getMemberProfile = async (req, res) => {
+    const memberId = req.userId;
+    if (memberId === null) {
+        res.status(401).json({ status: 401, message: 'Unauthorization' });
         return;
     }
-    const memberIndex = members.findIndex(member => member.id === memberId);
-    if(memberIndex === -1) {
-        console.log("여기 들어가지잫아")
-        res.status(404).json({status:404,message:'member_not_found'})
+    const conn = await dbPool.getConnection();
+    try {
+        const [rows] = await conn.execute('select m.member_id,m.member_profileImage as memberProfileImage from member m where member_id = ?', [memberId])
+        if (rows.length === 0) {
+            res.status(404).json({ status: 404, message: 'member_not_found' });
+            return;
+        }
+        res.status(200).json({ status: 200, member: rows[0] });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ status: 500, message: 'error' });
+    } finally {
+        conn.release();
+    }
+}
+
+
+
+
+export const getMember = async (req, res) => {
+
+    const memberId = req.userId;
+    if (memberId === null) {
+        res.status(401).json({ status: 401, message: 'Unauthorization' })
         return;
     }
+    const conn = await dbPool.getConnection();
+    try {
+        const sql = `
+        select 
+        member_id as memberId,
+        member_email as memberEmail,
+        member_nickname as memberNickname,
+        member_profileImage as memberProfileImage,
+        created_at as createdAt,
+        updated_at as updatedAt
+        from member where member_id = ?;
+        `
+        const [rows] = await conn.execute(sql, [memberId]);
+        if (rows.length === 0) {
+            res.status(404).json({ status: 404, message: 'member_not_found' });
+            return;
+        }
+        if (rows.length > 0) {
+            res.status(200).json({ status: 200, member: rows[0] });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ status: 500, message: 'error' });
+    } finally {
+        conn.release();
+    }
 
-    res.status(200).json({status:200,member:members[memberIndex]});
+
 }
 
 export const memberUpdate = (req, res) => {
-    upload.single('profileImage')(req, res, function (err) {
+    upload.single('profileImage')(req, res, async function (err) {
         if (err instanceof multer.MulterError) {
             if (err.code === 'LIMIT_FILE_SIZE') {
                 res.status(413).send({ status: 413, message: 'file_too_large' });
@@ -183,87 +227,106 @@ export const memberUpdate = (req, res) => {
             res.status(500).json({ message: 'upload_error' });
             return;
         }
+
+
         const memberId = req.userId;
-        //  멤버에 인덱스를 찾는 함수
-        const memberIndex = members.findIndex(member => member.id == parseInt(memberId))
-        if (memberIndex == -1) {
-            res.status(404).json({ message: 'member not found' })
-            return;
-        }
+        const conn = await dbPool.getConnection();
+        try {
+            const sql = `
+            select
+            member_profileImage as memberProfileImage,
+            member_nickname as memberNickname
+            from member where member_id = ?;
+            `
+            const [currentMemberRows] = await conn.execute(sql, [memberId]);
+            const currentNickname = currentMemberRows[0].memberNickname;
+            if (currentNickname !== req.body.nickname) {        //현재 닉네임과 변경할 닉네임이 같을 경우 넘어감
+                if (await nicknameValidCheck(req.body.nickname)) {
+                    res.status(400).json({ status: 400, message: "invalid_nickname" })
+                    return;
+                }
+            }
 
-        if (err instanceof multer.MulterError) {
-            // 업로드 오류 처리
-            res.status(500).json({ message: 'upload_error' });
-            return;
-        }
-        if (nicknameValidCheck(req.body.nickname)) {
-            res.status(400).json({ status: 400, message: "invalid_user_id" })
-            return;
-        }
-        if (req.file !== undefined) {
-            const imagePath = '/' + req.file.path;
+            const currentImage = currentMemberRows[0].memberProfileImage;
+            let imagePath= currentImage;
+            if(req.file !== undefined){
+                imagePath = '/' + req.file.path;
+                imgDelete(currentImage);
+            }
 
-            imgDelete(members[memberIndex].profile_image);
-            // members[memberIndex] = { ...members[memberIndex], ...req.body }      //받아온 json형 객체를 한번에 붙여준다!
-            members[memberIndex].nickname = req.body.nickname;
-            members[memberIndex].profile_image = imagePath;
-
-            memberSaveFile(members)
+            const sql2 = 'update member set member_nickname = ?, member_profileImage = ? where member_id = ?';
+            const values = [
+                req.body.nickname,
+                imagePath,
+                memberId
+            ];
+            const [rows2, fields] = await conn.execute(sql2, values);
             res.status(200).json({ status: 200, message: "updata_member_success" })
+        } catch (error) {
+            console.error(error);
+            res.status(500).json({ status: 500, message: "error" });
+        } finally {
+            conn.release();
         }
-        else {
-            members[memberIndex].nickname = req.body.nickname;
 
-            memberSaveFile(members)
-            res.status(200).json({ status: 200, message: "update_nickname_success" })
-        }
     })
 }
 
-export const memberPassword = (req, res) => {
+export const memberPassword = async (req, res) => {
     const memberId = req.userId;
-    const index = members.findIndex(member => memberId === member.id)
-    members[index].password = req.body.password;
-    console.log(req.body);
-    memberSaveFile(members);
+
     if (memberId === null) {
         res.status(401).json({ status: 401, message: "Unauthorization" })
-    } else if (index === -1) {
-        res.status(404).json({ status: 404, message: "member_not_found" })
-    } else if (index + 1) {     //인덱스가 0부터 시작하므로 0값도 참으로 받을수있게 설정
-        res.status(200).json({ status: 200, message: "password_update_success" })
-    } else {
-        res.status(500).json({ message: 'err' });
+        return;
+    }
+    const conn = await dbPool.getConnection();
+    try {
+        const [memberRows] = await conn.execute('select member_id as memberId from member where member_id = ?', [memberId]);
+        if (memberRows.length === 0) {
+            res.status(404).json({ status: 404, message: "member_not_found" });
+            return;
+        }
+
+        const sql = 'update member set member_password = ? where member_id = ?';
+        const values = [req.body.password, memberId];
+        const [rows, fields] = await conn.execute(sql, values);
+        res.status(200).json({ status: 200, message: "update_password_success" });
+    }
+    catch (error) {
+        console.error(error);
+        res.status(500).json({ status: 500, message: "error" });
+    }
+    finally {
+        conn.release();
     }
 }
 
-export const memberDelete = (req, res) => {
-    // const memberId = req.userId;
+export const memberDelete = async (req, res) => {
     const memberId = req.userId;
-    
-    const memberIndex = members.findIndex(member => memberId === member.id);
-  
     if (memberId === null) {
         res.status(401).json({ status: 401, message: "Unauthorization" })
         return;
     }
 
-    if (memberIndex === -1) {
-        res.status(404).json({ status: 404, message: "Member not found" });
-        return;
+    const conn =await  dbPool.getConnection();
+    try {
+        const [memberRows] = await conn.execute('select member_id as memberId,member_profileImage as memberProfileImage from member where member_id = ?', [memberId]);
+        if (memberRows.length === 0) {
+            res.status(404).json({ status: 404, message: "member_not_found" });
+            return;
+        }
+        const currentImage = memberRows[0].memberProfileImage;
+        imgDelete(currentImage);
+        const sql = 'delete from member where member_id = ?';
+        const [rows, fields] = await conn.execute(sql, [memberId]);
+        res.clearCookie('sessionId');
+        res.status(200).json({ status: 200, message: "Member delete success!" })
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ status: 500, message: "error" });
+    } finally {
+        conn.release();
     }
-    deleteMemberCascade(memberId);
-    
-    imgDelete(members[memberIndex].profile_image);
-    members.splice(memberIndex, 1)
-    res.clearCookie('sessionId');
-    memberSaveFile(members);
-    boardSaveFile(boards);
-    commentSaveFile(comments);
-
-    console.log('통과');
-    res.status(200).json({ status: 200, message: "Member delete success!" })
-
 }
 
 
@@ -286,7 +349,6 @@ export const logout = (req, res) => {
 
 
 export const checkEmail = (req, res) => {
-    console.log(JSON.stringify(req.session))
     const email = emailValidCheck(req.body.email)
     if (email) {
         res.status(400).json({ status: 400, message: 'already_exist_email' })

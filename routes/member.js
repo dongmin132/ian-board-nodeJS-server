@@ -1,6 +1,6 @@
 import express from 'express';
 import { isAuthenticated } from '../config/isAuthentication.js';
-import {login,register, getMember,memberUpdate,checkEmail,checkNickname,memberDelete, memberPassword, logout} from '../controllers/memberController.js';
+import {login,register, getMember,memberUpdate,checkEmail,checkNickname,memberDelete, memberPassword, logout, getMemberProfile} from '../controllers/memberController.js';
 // import path from 'path';
 
 // import multer from 'multer';
@@ -22,6 +22,8 @@ router.post('/login',login);
 router.get('/logout',logout);
 
 router.post('/register',register);
+
+router.get('/getMemberProfile',isAuthenticated,getMemberProfile);
 
 router.get('/getMember',isAuthenticated,getMember);
 

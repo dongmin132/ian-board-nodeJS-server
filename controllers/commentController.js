@@ -8,6 +8,7 @@ import { comments } from '../models/comments.js'
 import path from 'path'; // path 모듈 import
 import { getCurrentDateTime } from '../utils/getDate.js';
 import { commentSaveFile } from '../config/CommentSaveFile.js';
+import { dbPool } from '../config/mysql.js';
 
 
 const app = express();
@@ -39,8 +40,6 @@ const commentRegister = (data,pathVariable,userId) => {
         // "boardId는 특정 게시판의 댓글을 가져오는 것" 이라는 의미를 지니고 있으므로 요청 body가 아닌 path variable로 받아오자
         boardId : parseInt(pathVariable.boardId),
         content : data.content,
-        createdAt : getCurrentDateTime()
-        
     }
     return comment;
 }
@@ -63,13 +62,9 @@ const commentRegister = (data,pathVariable,userId) => {
 // }
 
 
-export const createComment = (req, res) => {
+export const createComment = async (req, res) => {
     const userId = req.userId;
-    console.log("boardId :",req.params.boardId);
-    if(!boards.find(board=>parseInt(req.params.boardId)===board.id)) {
-        res.status(400).json({status:400,message:'invalid_board_id'})
-        return ;
-    }
+    const boardId = parseInt(req.params.boardId);
     if(!userId) {
         res.status(401).json({status:401,message:'not_authorization'})
         return ;
@@ -79,65 +74,90 @@ export const createComment = (req, res) => {
         return ;
     }
 
-    const comment = commentRegister(req.body,req.params,userId);
-    comments.push(comment);
-    commentSaveFile(comments);
-
-    res.status(201).json({status:201,message:'comment_register_success'});
+    const conn = await dbPool.getConnection();
+    try {
+        const [boardRows] = await conn.execute('SELECT * FROM board WHERE board_id = ?', [boardId]);
+        if (boardRows.length === 0) {
+            res.status(404).json({ status: 404, message: "Board not found" });
+            return;
+        }
+     
+        const sql = `insert into comment (member_id,board_id,comment_content) values (?,?,?)`;
+        const values = [userId,boardId,req.body.content];
+        const [rows,fields] = await conn.execute(sql,values);
+        res.status(201).json({status:201,message:'comment_register_success'});
+    } catch (error) {
+        res.status(500).json({status:500,message:'comment_register_fail'});
+    } finally {
+        conn.release();
+    
+    }
 }
 
-export const updateComment = (req,res) => {
+export const updateComment = async (req,res) => {
     const userId = req.userId;
     const commentId = parseInt(req.params.commentId);
-    const commentIndex = comments.findIndex(comment => commentId === comment.id);
-    if(commentIndex===-1) {
-        res.status(404).json({status:404,message:"comment_not_found"});
-        return ;
-    }
-    if(parseInt(req.params.boardId)!==comments[commentIndex].boardId) {
-        console.log(`commentIndex: ${commentIndex}`)
-        console.log(req.params.boardId,comments[commentIndex].boardId)
-        res.status(404).json({status:404,message:"boardId_mismatch"})
-        return ;
-    }
+
     if(!userId){
         res.status(401).json({status:401,message:"not_authorization"});
         return ;
     }
-    if(comments[commentIndex].userId!==userId)
-    {
-        res.status(403).json({status:403,message:"permission_differen_member"});
-        return;
-    }
+
     if(!req.body.content) {
         res.status(400).json({status:400,message:"message_empty"});
         return;
     }
-    comments[commentIndex].content = req.body.content;
-    commentSaveFile(comments);
-    res.status(200).json({status:200, message:"comment_update_success"});
+
+    const conn = await dbPool.getConnection();
+    try {
+        const [commentRows] = await conn.execute('select * from comment where comment_id = ?', [commentId]);
+        if(commentRows.length===0) {
+            res.status(404).json({status:404,message:"comment_not_found"});
+            return ;
+        }
+        if(commentRows[0].member_id!==userId) {
+            res.status(403).json({status:403,message:"permission_different_member"});
+            return ;
+        }
+
+        const sql = `update comment set comment_content = ? where comment_id = ?`;
+        const values = [req.body.content,commentId];
+        const [rows,fields] = await conn.execute(sql,values);
+        res.status(200).json({status:200, message:"comment_update_success"});
+    }   catch (error) {
+        res.status(500).json({status:500,message:"comment_update_fail"});
+    } finally {
+        conn.release();
+    }
 }
 
-export const deleteComment = (req,res) => {
+export const deleteComment = async (req,res) => {
     const userId = req.userId
     const commentId = parseInt(req.params.commentId);
-    console.log("커멘트 ID:",commentId);
-    const commentIndex = comments.findIndex(comment => commentId === comment.id);
-    if(commentIndex===-1) {
-        res.status(404).json({status:404,message:"comment_not_found"});
-        return ;
-    }
+
     if(!userId) {
         res.status(401).json({status:401,message:"Not_Authentication"})
     }
-    console.log("삭제 할때 commentIndex는 ",commentIndex);
-    if(userId!==comments[commentIndex].userId) {
-        res.status(403).json({status:403,message:"permission_not_matched_member"})
-        return ;
+    
+    const conn = await dbPool.getConnection();
+    try {
+        const [commentRows] = await conn.execute('select * from comment where comment_id = ?', [commentId]);
+        if(commentRows.length===0) {
+            res.status(404).json({status:404,message:"comment_not_found"});
+            return ;
+        }
+        if(commentRows[0].member_id!==userId) {
+            res.status(403).json({status:403,message:"permission_different_member"});
+            return ;
+        }
+
+        const sql = `delete from comment where comment_id = ?`;
+        const [rows,fields] = await conn.execute(sql,[commentId]);
+        res.status(200).json({status:200,message:"comment_delete_success"});
+    } catch (error) {
+        res.status(500).json({status:500,message:"comment_delete_fail"});
+    } finally {
+        conn.release();
     }
     
-   
-    comments.splice(commentIndex,1)
-    commentSaveFile(comments);
-    res.status(200).json({status:200,message:"comment_delete_success"});
 }

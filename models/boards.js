@@ -1,13 +1,5 @@
 export const boards =[
   {
-    "id": 1,
-    "title": "제목을 뭐라고 지을지 아직 생각을 안해봤어요..",
-    "content": "내용은 또 머라고 적을지 나중에 생각을 천천히 해볼게요",
-    "userId": 1,
-    "contentImage": null,
-    "createdAt": "2024-05-15 14:43:51"
-  },
-  {
     "id": 2,
     "title": "이것은 제목입니다111",
     "content": "내용이구요1111",

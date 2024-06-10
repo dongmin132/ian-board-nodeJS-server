@@ -1,5 +1,5 @@
 import express from 'express';
-import { getBoard,createBoarad, getBoardsWithMember, getBoardWithMemberWithComments,updateBoard, deleteBoard } from '../controllers/boardController.js';
+import { createBoarad, getBoardsWithMember, getBoardWithMemberWithComments,updateBoard, deleteBoard, incrementView } from '../controllers/boardController.js';
 import { createComment, updateComment, deleteComment } from '../controllers/commentController.js'
 import { isAuthenticated, isAuthenticatedBoards } from '../config/isAuthentication.js';
 const router = express.Router();
@@ -9,9 +9,7 @@ router.get('/',getBoardsWithMember);
 
 router.post('/',isAuthenticated,createBoarad);
 
-// router.get('/:boardId',isAuthenticated,getBoardWithComment);
-
-router.get('/update/:boardId',getBoard);     //어따 쓰는거지...?         updateBoard에서 쓰는거였음
+router.post('/:boardId/views',incrementView);
 
 router.get('/:boardId',isAuthenticatedBoards,getBoardWithMemberWithComments);
 
