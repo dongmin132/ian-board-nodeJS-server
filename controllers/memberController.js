@@ -41,25 +41,18 @@ const upload = multer({
 
 
 //-----------------------------------------비즈니스 로직
-const loginCheck = (email, password) => {
-    return members.find(member => member.email === email && member.password === password);
-}
-const findById = (memberId) => {
-    return members.find(member => memberId === member.id);
+const loginCheck = async (email, password) => {
+    
+    const sql = `select member_id as memberId from member where member_email = ? and member_password = ?`;
+    const conn = await dbPool.getConnection();
+    const [rows] = await conn.execute(sql, [email, password]);
+    conn.release();
+    if (rows.length > 0) {
+        return rows[0];
+    }
+    return null;
 }
 
-const memberRegister = (imagePath, data) => {
-    const memberId = members.length > 0 ? members[members.length - 1].id + 1 : 1;  //id는 거의 1부터 오름차순으로 올라가기에 members에 가장 마지막 값에서 1을 더해주었다.
-    const member = {
-        id: memberId,
-        email: data.email, // FormData에서 email 필드 추출
-        password: data.password, // FormData에서 password 필드 추출
-        nickname: data.nickname, // FormData에서 nickname 필드 추출
-        profile_image: imagePath
-    };
-    //   console.log(members);
-    return member;
-}
 
 const emailValidCheck = async (email) => {
     const conn = await dbPool.getConnection();
@@ -93,13 +86,13 @@ const nicknameValidCheck = async (nickname) => {
 
 //--------------------------------------------------------
 
-export const login = (req, res) => {
+export const login = async (req, res) => {
     const { email, password } = req.body;
 
-    const member = loginCheck(email, password);
-
+    const member = await loginCheck(email, password);
+    console.log(member);
     if (member) {
-        req.session.userId = member.id;
+        req.session.userId = member.memberId;
         res.status(200).json({ message: 'login_success', userId: member.id });
     } else {
         res.status(401).json({ message: 'Authenthication_err' })
